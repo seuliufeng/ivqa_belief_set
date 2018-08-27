@@ -1,0 +1,54 @@
+from util import load_json, save_json, find_image_id_from_fname
+from time import time
+
+
+def load_task_data():
+    d = load_json('data/belief_set_all_algs.json')
+    return d
+
+
+def load_model(model_type):
+    if model_type == 'MLB2-att':
+        from bs_score_final_candidates_mlb_vqa2 import AttentionModel
+        model = AttentionModel()
+        return model
+    elif model_type == 'Vanilla':
+        from vqa_interactive_ui import VanillaModel
+        model = VanillaModel()
+        return model
+    elif model_type == 'MLB-att':
+        from vqa_interactive_ui import AttentionModel
+        model = AttentionModel()
+        return model
+    elif model_type == 'N2NMN':
+        from n2mn_wrapper import N2MNWrapper
+        model = N2MNWrapper()
+        return model
+
+
+def process(model_type='MLB2-att'):
+    result_format = 'result/vqa_score_on_mbs_%s_v2.json'
+    questions = load_task_data()
+    model = load_model(model_type)
+    results = []
+    num = len(questions)
+    t = time()
+    for i, item in enumerate(questions):
+        if i % 100 == 0:
+            print('Testing [%s]: %d/%d (speed: %0.2f sec/100 samples)' % (model_type, i, num, time() - t))
+            t = time()
+        image_id = find_image_id_from_fname(item['image'])
+        question = item['target']
+        answer = item['answer']
+        score = model.query_score(image_id, question, answer)
+        results.append(score)
+    res_file = result_format % model_type
+    save_json(res_file, results)
+
+
+if __name__ == '__main__':
+    # process()
+    # algs = ['MLB-att', 'MLB2-att', 'Vanilla']
+    algs = ['N2NMN']
+    for alg in algs:
+        process(alg)
